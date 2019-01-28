@@ -3,6 +3,11 @@
 import collections
 import logging
 
+from .expressions import (
+    Add,
+    BaseOperation,
+    ExpressionFunction,
+)
 from .exceptions import InvalidCondition
 from .signals import (
     object_deleted,
@@ -360,6 +365,7 @@ class ConditionRenderer:
 
     def render_update_expression(self, obj):
         updates = {
+            "add": [],
             "set": [],
             "remove": []}
         for column in sorted(
@@ -372,6 +378,8 @@ class ConditionRenderer:
             if is_empty(value_ref):
                 self.refs.pop_refs(value_ref)
                 updates["remove"].append(name_ref.name)
+            if isinstance(value_ref.value, Add):
+                updates['add'].append(name_ref.name)
             # Setting this column to a value, or to another column's value
             else:
                 updates["set"].append("{}={}".format(name_ref.name, value_ref.name))
@@ -379,6 +387,8 @@ class ConditionRenderer:
         expression = ""
         if updates["set"]:
             expression += "SET " + ", ".join(updates["set"])
+        if updates["add"]:
+            expression += "ADD " + ", ".join(updates["add"])
         if updates["remove"]:
             expression += " REMOVE " + ", ".join(updates["remove"])
         if expression:
