@@ -2,12 +2,19 @@
 
 
 class BaseOperation:
+
+    operation = None
+
     def __init__(self, value):
+
+        if self.operation is None:
+            raise Exception('required self.operation')
+
         self.value = value
 
 
 class Add(BaseOperation):
-    pass
+    operation = 'ADD'
 
 
 class ExpressionFunction:

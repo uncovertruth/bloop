@@ -3,8 +3,7 @@
 import collections
 import logging
 
-from .expressions import (
-    Add,
+from .operations import (
     BaseOperation,
     ExpressionFunction,
 )
@@ -179,7 +178,10 @@ class ReferenceTracker:
                 typedef = typedef[segment]
             if inner:
                 typedef = typedef.inner_typedef
-            value = self.engine._dump(typedef, value)
+            if isinstance(value, BaseOperation):
+                value = self.engine._dump(typedef, value.value)
+            else:
+                value = self.engine._dump(typedef, value)
 
         self.attr_values[ref] = value
         self.counts[ref] += 1
