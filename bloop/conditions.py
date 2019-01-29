@@ -4,6 +4,7 @@ import collections
 import logging
 
 from .operations import (
+    Add,
     BaseOperation,
     ExpressionFunction,
 )
@@ -375,13 +376,14 @@ class ConditionRenderer:
                 filter(lambda c: c not in obj.Meta.keys, get_marked(obj)),
                 key=lambda c: c.dynamo_name):
             name_ref = self.refs.any_ref(column=column)
-            value_ref = self.refs.any_ref(column=column, value=getattr(obj, column.name, None))
+            value = getattr(obj, column.name, None)
+            value_ref = self.refs.any_ref(column=column, value=value)
             # Can't set to an empty value
             if is_empty(value_ref):
                 self.refs.pop_refs(value_ref)
                 updates["remove"].append(name_ref.name)
-            if isinstance(value_ref.value, Add):
-                updates['add'].append(name_ref.name)
+            if isinstance(value, Add):
+                updates["add"].append("{}={}".format(name_ref.name, value_ref.name))
             # Setting this column to a value, or to another column's value
             else:
                 updates["set"].append("{}={}".format(name_ref.name, value_ref.name))
@@ -390,9 +392,9 @@ class ConditionRenderer:
         if updates["set"]:
             expression += "SET " + ", ".join(updates["set"])
         if updates["add"]:
-            expression += "ADD " + ", ".join(updates["add"])
+            expression = " ".join([expression, "ADD " + ", ".join(updates["add"])])
         if updates["remove"]:
-            expression += " REMOVE " + ", ".join(updates["remove"])
+            expression = " ".join([expression, "REMOVE " + ", ".join(updates["remove"])])
         if expression:
             self.expressions["UpdateExpression"] = expression.strip()
 
