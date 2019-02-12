@@ -3,11 +3,6 @@
 import collections
 import logging
 
-from .operations import (
-    Add,
-    BaseOperation,
-    ExpressionFunction,
-)
 from .exceptions import InvalidCondition
 from .signals import (
     object_deleted,
@@ -18,7 +13,7 @@ from .signals import (
 from .util import WeakDefaultDictionary, missing
 
 
-__all__ = ["BaseCondition", "ComparisonMixin", "Condition", "iter_columns", "render"]
+__all__ = ["BaseCondition", "ComparisonMixin", "Condition", "iter_columns", "UpdateMixin", "render"]
 
 
 comparison_aliases = {
@@ -179,7 +174,7 @@ class ReferenceTracker:
                 typedef = typedef[segment]
             if inner:
                 typedef = typedef.inner_typedef
-            if isinstance(value, BaseOperation):
+            if isinstance(value, Action):
                 value = self.engine._dump(typedef, value.value)
             else:
                 value = self.engine._dump(typedef, value)
@@ -382,9 +377,10 @@ class ConditionRenderer:
             if is_empty(value_ref):
                 self.refs.pop_refs(value_ref)
                 updates["remove"].append(name_ref.name)
-            if isinstance(value, Add):
-                updates["add"].append("{}={}".format(name_ref.name, value_ref.name))
-            # Setting this column to a value, or to another column's value
+            elif isinstance(value, AddAction):
+                updates["add"].append(value.format_str.format(name_ref.name, value_ref.name))
+            elif isinstance(value, SetAction):
+                updates["set"].append(value.format_str.format(name_ref.name, value_ref.name))
             else:
                 updates["set"].append("{}={}".format(name_ref.name, value_ref.name))
 
@@ -982,3 +978,36 @@ def iter_columns(condition):
                     if value not in visited:
                         visited.add(value)
                         yield value
+
+
+class Action(object):
+    def __init__(self, column, value, format_str):
+        self.column = column
+        self.value = value
+        self.format_str = format_str
+
+
+class AddAction(Action):
+    pass
+
+
+class SetAction(Action):
+    pass
+
+
+class UpdateMixin:
+
+    def __or__(self, value):
+        # TODO: check
+        return SetAction(column=self, value=value, format_str='{0} = if_not_exists({0}, {1})')
+
+    def __add__(self, value):
+        # TODO: check
+        return AddAction(column=self, value=value, format_str='{0} {1}')
+
+    def incr_(self, value):
+        # TODO: check
+        return SetAction(column=self, value=value, format_str='{0} = {0} + {1}')
+
+    if_not_exists = __or__
+    add = __add__

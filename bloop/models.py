@@ -6,7 +6,10 @@ from copy import copy as copyfn
 from typing import Callable, Dict, Optional, Set
 
 from . import util
-from .conditions import ComparisonMixin
+from .conditions import (
+    ComparisonMixin,
+    UpdateMixin,
+)
 from .exceptions import InvalidModel, InvalidStream
 from .signals import model_created, object_modified
 from .types import DateTime, Number, Type
@@ -437,7 +440,7 @@ class LocalSecondaryIndex(Index):
         self.model.Meta.write_units = value
 
 
-class Column(ComparisonMixin):
+class Column(ComparisonMixin, UpdateMixin):
     model: BaseModel
     """Represents a single attribute in DynamoDB.
 
