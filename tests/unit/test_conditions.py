@@ -587,6 +587,21 @@ def test_render_atomic_and_condition(engine):
     }
 
 
+def test_render_atomic_counter(engine):
+    """Atomic condition on a new object only -> all attribute_not_exists"""
+    user = User(id="user_id")
+    object_saved.send(engine, engine=engine, obj=user)
+    user.age = User.age.incr_(5)
+
+    rendered = render(engine, obj=user, atomic=True, update=True)
+    assert rendered == {
+        "UpdateExpression": "SET #n2 = #n2 + :v3",
+        "ExpressionAttributeNames": {'#n0': 'id', '#n2': 'age'},
+        "ExpressionAttributeValues": {':v1': {'S': 'user_id'}, ':v3': {'N': '5'}},
+        "ConditionExpression": "(#n0 = :v1)"
+    }
+
+
 def test_render_update_only(engine):
     user = User(email="@", age=3)
     rendered = render(engine, obj=user, update=True)
